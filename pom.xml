@@ -6,7 +6,7 @@
 
     <groupId>com.k8spen</groupId>
     <artifactId>k8s-pen-tool</artifactId>
-    <version>1.0.0</version>
+    <version>2.1</version>
     <packaging>jar</packaging>
 
     <properties>

@@ -100,7 +100,7 @@ public class PersistHandler {
                     String useToken = (token != null && !token.isEmpty()) ? token : null;
                     String useUser = !username.isEmpty() ? username : null;
                     String usePass = !password.isEmpty() ? password : null;
-                    return KubectlUtil.exec("https://" + host + ":6443", useToken, useUser, usePass, true, ctx.getTimeout(), args);
+                    return KubectlUtil.exec(ctx.getApiBaseUrl(), useToken, useUser, usePass, true, ctx.getTimeout(), args);
                 }
             }
         };
@@ -112,7 +112,7 @@ public class PersistHandler {
             } else {
                 String b64Token = result.trim(); String decoded = b64Token;
                 try { decoded = new String(java.util.Base64.getDecoder().decode(b64Token)); } catch (Exception ignored) {}
-                persistSAOutput.setText(persistSAOutput.getText() + "\n\n# ===== SA Token =====\n# Base64: " + (b64Token.length() > 40 ? b64Token.substring(0, 40) + "..." : b64Token) + "\n# Decoded:\n" + decoded + "\n\n# 使用方法:\nkubectl --server=https://" + host + ":6443 --token=" + decoded + " --insecure-skip-tls-verify=true get pods\n");
+                persistSAOutput.setText(persistSAOutput.getText() + "\n\n# ===== SA Token =====\n# Base64: " + (b64Token.length() > 40 ? b64Token.substring(0, 40) + "..." : b64Token) + "\n# Decoded:\n" + decoded + "\n\n# 使用方法:\nkubectl --server=" + ctx.getApiBaseUrl() + " --token=" + decoded + " --insecure-skip-tls-verify=true get pods\n");
                 ctx.setStatus("SA Token获取成功"); ctx.log("[+] SA Token获取成功");
             }
         });
@@ -155,7 +155,7 @@ public class PersistHandler {
         ctx.log("[+] 已生成影子Kubeconfig");
     }
     public void persistFillFromTarget() {
-        String host = ctx.getHost(); if (host != null && !host.isEmpty()) persistKcServer.setText(host + ":6443");
+        String base = ctx.getApiBaseUrl(); if (base != null && !base.isEmpty()) persistKcServer.setText(base);
         String token = ctx.getToken(); if (token != null && !token.isEmpty()) persistKcToken.setText(token);
         ctx.log("[*] 已从目标配置填充");
     }

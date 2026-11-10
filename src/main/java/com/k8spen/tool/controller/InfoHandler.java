@@ -1,11 +1,15 @@
 package com.k8spen.tool.controller;
 
 import com.k8spen.tool.utils.K8sHttpUtil;
+import com.k8spen.tool.view.CommandCards;
+import com.k8spen.tool.view.ResultPane;
 import javafx.concurrent.Task;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 /**
  * 0.信息搜集 — 环境辨别、特权检测、端口扫描、SA Token、Capabilities解码
@@ -15,13 +19,14 @@ public class InfoHandler {
     private final ControllerContext ctx;
 
     // FXML controls
-    private final TextArea envCheckCmds;
-    private final TextArea privCheckCmds;
+    private final CommandCards envCheckCmds;
+    private final CommandCards privCheckCmds;
     private final TextField capHexInput;
-    private final TextArea capDecodeOutput;
-    private final TextArea portRefArea;
-    private final TextArea portScanResult;
-    private final TextArea saTokenCmds;
+    private final ResultPane capDecodeOutput;
+    private final Label capDecodeNotice;
+    private final ResultPane portRefArea;
+    private final ResultPane portScanResult;
+    private final CommandCards saTokenCmds;
 
     private static final String[] CAP_NAMES = {
             "CAP_CHOWN", "CAP_DAC_OVERRIDE", "CAP_DAC_READ_SEARCH", "CAP_FOWNER",
@@ -51,15 +56,16 @@ public class InfoHandler {
     };
 
     public InfoHandler(ControllerContext ctx,
-                       TextArea envCheckCmds, TextArea privCheckCmds,
-                       TextField capHexInput, TextArea capDecodeOutput,
-                       TextArea portRefArea, TextArea portScanResult,
-                       TextArea saTokenCmds) {
+                       CommandCards envCheckCmds, CommandCards privCheckCmds,
+                       TextField capHexInput, ResultPane capDecodeOutput, Label capDecodeNotice,
+                       ResultPane portRefArea, ResultPane portScanResult,
+                       CommandCards saTokenCmds) {
         this.ctx = ctx;
         this.envCheckCmds = envCheckCmds;
         this.privCheckCmds = privCheckCmds;
         this.capHexInput = capHexInput;
         this.capDecodeOutput = capDecodeOutput;
+        this.capDecodeNotice = capDecodeNotice;
         this.portRefArea = portRefArea;
         this.portScanResult = portScanResult;
         this.saTokenCmds = saTokenCmds;
@@ -96,6 +102,11 @@ public class InfoHandler {
     }
 
     public void decodeCapabilities() {
+        capDecodeOutput.setVisible(true);
+        capDecodeOutput.setManaged(true);
+        capDecodeNotice.setText("");
+        capDecodeNotice.setManaged(false);
+        capDecodeNotice.setVisible(false);
         String hex = capHexInput.getText().trim();
         if (hex.isEmpty()) {
             capDecodeOutput.setText("[-] 请输入CapEff hex值");
@@ -105,11 +116,13 @@ public class InfoHandler {
         try {
             long capValue = Long.parseUnsignedLong(hex, 16);
             StringBuilder sb = new StringBuilder();
+            List<List<String>> rows = new ArrayList<>();
             sb.append("解码结果 (0x").append(hex).append("):\n\n");
             boolean hasAny = false;
             for (int i = 0; i < CAP_NAMES.length; i++) {
                 if ((capValue & (1L << i)) != 0) {
                     sb.append("  [+] ").append(CAP_NAMES[i]).append(" (bit ").append(i).append(")\n");
+                    rows.add(List.of(String.valueOf(i), CAP_NAMES[i]));
                     hasAny = true;
                 }
             }
@@ -118,7 +131,12 @@ public class InfoHandler {
                 sb.append("\n[!] 警告: 包含CAP_SYS_ADMIN，可能存在容器逃逸风险!\n");
             if (capValue == 0x3fffffffffL || capValue == 0x1fffffffffL)
                 sb.append("\n[!] 警告: 可能是特权容器 (all capabilities)!\n");
-            capDecodeOutput.setText(sb.toString());
+            String warnings = sb.toString().lines().filter(line -> line.startsWith("[!]"))
+                    .map(line -> line.substring(4)).collect(java.util.stream.Collectors.joining("\n"));
+            capDecodeNotice.setText(warnings);
+            capDecodeNotice.setManaged(!warnings.isEmpty());
+            capDecodeNotice.setVisible(!warnings.isEmpty());
+            capDecodeOutput.showTable("Capabilities", List.of("Bit", "Capability"), rows, sb.toString());
             ctx.log("[+] Capabilities解码完成");
         } catch (NumberFormatException e) {
             capDecodeOutput.setText("[-] 无效的hex值: " + hex);
@@ -128,6 +146,8 @@ public class InfoHandler {
     public void quickPortScan() {
         String host = ctx.getHost();
         if (host == null) return;
+        portScanResult.setVisible(true);
+        portScanResult.setManaged(true);
         ctx.setStatus("正在扫描端口...");
         portScanResult.setText("扫描中...\n");
         ctx.log("[*] 开始扫描 " + host + " 的K8s常见端口");
@@ -148,7 +168,9 @@ public class InfoHandler {
             }
         };
         task.setOnSucceeded(e -> {
-            portScanResult.setText(task.getValue());
+            List<List<String>> rows = task.getValue().lines().skip(2)
+                    .map(line -> List.of(line.strip().split("\\s{2,}", 3))).toList();
+            portScanResult.showTable("端口扫描", List.of("组件", "端口", "状态"), rows, task.getValue());
             ctx.setStatus("扫描完成");
             ctx.log("[+] 端口扫描完成");
         });
@@ -228,7 +250,7 @@ public class InfoHandler {
     }
 
     private void initPortRefArea() {
-        portRefArea.setText(
+        String reference =
                 "# ======== K8s相关端口参考 ========\n\n"
                 + String.format("%-28s %-12s %s\n", "组件", "端口", "说明")
                 + String.format("%-28s %-12s %s\n", "---", "---", "---")
@@ -245,8 +267,10 @@ public class InfoHandler {
                 + String.format("%-28s %-12s %s\n", "kube-proxy", "10256", "健康检查端口")
                 + String.format("%-28s %-12s %s\n", "kube-scheduler", "10251", "监控端口")
                 + String.format("%-28s %-12s %s\n", "weave", "6781-6783", "网络插件")
-                + String.format("%-28s %-12s %s\n", "kubeflow-dashboard", "8080", "机器学习平台")
-        );
+                + String.format("%-28s %-12s %s\n", "kubeflow-dashboard", "8080", "机器学习平台");
+        List<List<String>> rows = reference.lines().skip(4)
+                .map(line -> List.of(line.strip().split("\\s{2,}", 3))).toList();
+        portRefArea.showTable("常见端口", List.of("组件", "端口", "说明"), rows, reference);
     }
 
     private void initSATokenCmds() {

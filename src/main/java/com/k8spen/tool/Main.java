@@ -1,6 +1,8 @@
 package com.k8spen.tool;
 
 import com.k8spen.tool.utils.K8sHttpUtil;
+import javafx.beans.value.ChangeListener;
+import javafx.css.PseudoClass;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -21,25 +23,37 @@ import java.awt.image.BufferedImage;
 
 public class Main extends Application {
 
+    private static final PseudoClass COMPACT = PseudoClass.getPseudoClass("compact");
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         Parent root = FXMLLoader.load(getClass().getResource("/gui.fxml"));
-        primaryStage.setTitle("K8s\u7efc\u5408\u6e17\u900f\u6d4b\u8bd5\u5de5\u5177 v1.0");
+        primaryStage.setTitle("K8s\u7efc\u5408\u6e17\u900f\u6d4b\u8bd5\u5de5\u5177 v2.1");
 
         Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
-        double screenW = screenBounds.getWidth();
-        double screenH = screenBounds.getHeight();
-
-        double stageW = screenW * 0.82;
-        double stageH = screenH * 0.82;
-
-        Scene scene = new Scene(root, stageW, stageH);
+        Scene scene = new Scene(root);
         primaryStage.setScene(scene);
         primaryStage.getIcons().add(buildAppIcon());
-        primaryStage.setMinWidth(900.0);
-        primaryStage.setMinHeight(600.0);
+        ChangeListener<Number> resizeListener = (obs, previous, current) ->
+                root.pseudoClassStateChanged(COMPACT,
+                        primaryStage.getWidth() < 1100 || primaryStage.getHeight() < 720);
+        primaryStage.widthProperty().addListener(resizeListener);
+        primaryStage.heightProperty().addListener(resizeListener);
+        fitToScreen(primaryStage, screenBounds);
         primaryStage.show();
         K8sHttpUtil.disableSslVerification();
+    }
+
+    static void fitToScreen(Stage stage, Rectangle2D screenBounds) {
+        // JavaFX 使用逻辑像素，完整窗口尺寸包含标题栏并为任务栏保留空间。
+        double width = Math.min(1180, screenBounds.getWidth() * 0.86);
+        double height = Math.min(900, screenBounds.getHeight() * 0.94);
+        stage.setMinWidth(Math.min(800, width));
+        stage.setMinHeight(Math.min(480, height));
+        stage.setWidth(width);
+        stage.setHeight(height);
+        stage.setX(screenBounds.getMinX() + (screenBounds.getWidth() - width) / 2);
+        stage.setY(screenBounds.getMinY() + (screenBounds.getHeight() - height) / 2);
     }
 
     private Image buildAppIcon() {

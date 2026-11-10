@@ -151,8 +151,9 @@ public class PersistenceHelper {
         if (token == null || token.isEmpty()) return "# 请填写Token";
         if (clusterName == null || clusterName.isEmpty()) clusterName = "pwned-cluster";
 
-        if (!server.startsWith("https://")) server = "https://" + server;
-        if (!server.contains(":") || server.lastIndexOf(':') == server.indexOf("://") + 2) {
+        if (!server.startsWith("https://") && !server.startsWith("http://")) server = "https://" + server;
+        String afterScheme = server.substring(server.indexOf("://") + 3);
+        if (!afterScheme.contains(":")) {
             server = server + ":6443";
         }
 

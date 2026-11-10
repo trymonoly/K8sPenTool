@@ -66,8 +66,10 @@ public class PodJsonParser {
                 }
             }
 
-            return new PodTableItem(namespace, name, phase, node, podIP,
+            PodTableItem item = new PodTableItem(namespace, name, phase, node, podIP,
                     containerNames.toString(), imageNames.toString());
+            item.setResource(pod);
+            return item;
         } catch (Exception e) {
             return null;
         }

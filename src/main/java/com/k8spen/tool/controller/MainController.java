@@ -1,5 +1,10 @@
 package com.k8spen.tool.controller;
 
+import com.k8spen.tool.view.ResultPane;
+import com.k8spen.tool.view.AboutWindow;
+import com.k8spen.tool.view.CommandCards;
+import com.k8spen.tool.helper.DockerContainerItem;
+import com.k8spen.tool.helper.DockerImageItem;
 import com.k8spen.tool.helper.PodTableItem;
 import com.k8spen.tool.helper.SecretTableItem;
 import javafx.application.Platform;
@@ -10,11 +15,14 @@ import javafx.scene.control.*;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Locale;
 
 public class MainController {
 
     // ===== 目标配置 =====
     @FXML private TextField targetHost;
+    @FXML private ComboBox<String> protocolOpt;
+    @FXML private TextField apiPort;
     @FXML private TextField timeoutField;
     @FXML private CheckBox sslSkipVerify;
     @FXML private TextField tokenField;
@@ -23,33 +31,36 @@ public class MainController {
     @FXML private TextArea logTextArea;
 
     // ===== 0.信息搜集 =====
-    @FXML private TextArea envCheckCmds;
-    @FXML private TextArea privCheckCmds;
+    @FXML private CommandCards envCheckCmds;
+    @FXML private CommandCards privCheckCmds;
     @FXML private TextField capHexInput;
-    @FXML private TextArea capDecodeOutput;
-    @FXML private TextArea portRefArea;
-    @FXML private TextArea portScanResult;
-    @FXML private TextArea saTokenCmds;
+    @FXML private ResultPane capDecodeOutput;
+    @FXML private Label capDecodeNotice;
+    @FXML private ResultPane portRefArea;
+    @FXML private ResultPane portScanResult;
+    @FXML private CommandCards saTokenCmds;
 
     // ===== 1.初始访问 - APIServer =====
     @FXML private TextField customApiPath;
     @FXML private ComboBox<String> apiMethodOpt;
     @FXML private TextArea kubectlCmdHint;
-    @FXML private TextArea apiServerOutput;
+    @FXML private ResultPane apiServerOutput;
+    @FXML private TextField privEscNs;
+    @FXML private TextField privEscSaName;
 
     // ===== 1.初始访问 - Kubelet =====
     @FXML private TextField kubeletNs;
     @FXML private TextField kubeletPod;
     @FXML private TextField kubeletContainer;
     @FXML private TextField kubeletCmd;
-    @FXML private TextArea kubeletOutput;
+    @FXML private ResultPane kubeletOutput;
 
     // ===== 1.初始访问 - Etcd =====
     @FXML private ComboBox<String> etcdVersionOpt;
     @FXML private TextField etcdPort;
     @FXML private TextField etcdKeyInput;
     @FXML private TextArea etcdCmdHint;
-    @FXML private TextArea etcdOutput;
+    @FXML private ResultPane etcdOutput;
 
     // ===== 1.初始访问 - Dashboard =====
     @FXML private TextField dashboardPort;
@@ -65,10 +76,11 @@ public class MainController {
     @FXML private TextField apiExecPod;
     @FXML private TextField apiExecContainer;
     @FXML private TextField apiExecCmd;
-    @FXML private TextArea apiExecOutput;
+    @FXML private ResultPane apiExecOutput;
     @FXML private TextField apiExecUsername;
     @FXML private PasswordField apiExecPassword;
     @FXML private TableView<PodTableItem> apiPodTable;
+    @FXML private Label apiPodCount;
     @FXML private TableColumn<PodTableItem, String> colNs;
     @FXML private TableColumn<PodTableItem, String> colName;
     @FXML private TableColumn<PodTableItem, String> colStatus;
@@ -81,8 +93,9 @@ public class MainController {
     @FXML private TextField execPodName;
     @FXML private TextField execContainerName;
     @FXML private TextField execCommand;
-    @FXML private TextArea execOutput;
+    @FXML private ResultPane execOutput;
     @FXML private TableView<PodTableItem> kubeletPodTable;
+    @FXML private Label kubeletPodCount;
     @FXML private TableColumn<PodTableItem, String> kColNs;
     @FXML private TableColumn<PodTableItem, String> kColName;
     @FXML private TableColumn<PodTableItem, String> kColStatus;
@@ -101,9 +114,8 @@ public class MainController {
     @FXML private TextArea backdoorYamlOutput;
 
     // ===== 2.执行 - 服务账号 =====
-    @FXML private TextArea saUtilCmds;
     @FXML private TextField saTokenInput;
-    @FXML private TextArea saCheckOutput;
+    @FXML private ResultPane saCheckOutput;
 
     // ===== 2.执行 - RBAC =====
     @FXML private TextArea rbacCheckCmds;
@@ -162,11 +174,11 @@ public class MainController {
     @FXML private TableColumn<SecretTableItem, String> credColType;
     @FXML private TableColumn<SecretTableItem, String> credColAge;
     @FXML private TextArea credOutput;
-    @FXML private TextArea lateralOutput;
+    @FXML private ResultPane lateralOutput;
     @FXML private TextField lateralTaintNode;
     @FXML private TextField lateralTaintImage;
     @FXML private CheckBox lateralTaintHostMount;
-    @FXML private TextArea lateralTaintOutput;
+    @FXML private ResultPane lateralTaintOutput;
 
     // ===== kubectl操作 =====
     @FXML private ComboBox<String> kubectlConnMode;
@@ -174,13 +186,57 @@ public class MainController {
     @FXML private PasswordField kubectlPassword;
     @FXML private TextField kubectlExtraArgs;
     @FXML private TextField kubectlCustomCmd;
-    @FXML private TextArea kubectlOutput;
+    @FXML private ResultPane kubectlOutput;
 
     // ===== 2.执行 - 反弹Shell =====
     @FXML private TextField revShellLhost;
     @FXML private TextField revShellLport;
     @FXML private ComboBox<String> revShellType;
     @FXML private TextArea revShellOutput;
+
+    // ===== 7.Docker API - 连接与概览 =====
+    @FXML private ResultPane dockerInfoOutput;
+    @FXML private CommandCards dockerReference;
+
+    // ===== 7.Docker API - 容器管理 =====
+    @FXML private TableView<DockerContainerItem> dockerContainerTable;
+    @FXML private TableColumn<DockerContainerItem, String> dockerColContainerId;
+    @FXML private TableColumn<DockerContainerItem, String> dockerColContainerName;
+    @FXML private TableColumn<DockerContainerItem, String> dockerColContainerImage;
+    @FXML private TableColumn<DockerContainerItem, String> dockerColContainerState;
+    @FXML private TableColumn<DockerContainerItem, String> dockerColContainerStatus;
+    @FXML private Label dockerContainerCount;
+    @FXML private ResultPane dockerContainerOutput;
+    @FXML private ComboBox<String> dockerCreateImage;
+    @FXML private TextField dockerCreateName;
+    @FXML private TextField dockerCreateHostDir;
+    @FXML private TextField dockerCreateContainerDir;
+    @FXML private CheckBox dockerCreatePrivileged;
+
+    // ===== 7.Docker API - 命令执行 =====
+    @FXML private ComboBox<DockerContainerItem> dockerExecContainer;
+    @FXML private ComboBox<String> dockerShellOpt;
+    @FXML private ComboBox<String> dockerExecCmd;
+    @FXML private ResultPane dockerExecOutput;
+
+    // ===== 7.Docker API - 镜像管理 =====
+    @FXML private TableView<DockerImageItem> dockerImageTable;
+    @FXML private TableColumn<DockerImageItem, String> dockerColImageId;
+    @FXML private TableColumn<DockerImageItem, String> dockerColImageTag;
+    @FXML private TableColumn<DockerImageItem, String> dockerColImageSize;
+    @FXML private TableColumn<DockerImageItem, String> dockerColImageCreated;
+    @FXML private Label dockerImageCount;
+
+    // ===== 7.Docker API - 容器逃逸 =====
+    @FXML private ComboBox<DockerContainerItem> dockerEscapeContainer;
+    @FXML private ComboBox<String> dockerEscapeShell;
+    @FXML private ComboBox<String> dockerEscapeOs;
+    @FXML private TextField dockerEscapeMount;
+    @FXML private TextField dockerEscapeHostRoot;
+    @FXML private TextField dockerEscapeLhost;
+    @FXML private TextField dockerEscapeLport;
+    @FXML private ResultPane dockerEscapeCheck;
+    @FXML private ResultPane dockerEscapeOutput;
 
     // ===== 默认SSH密钥对 =====
     private static final String DEFAULT_SSH_PUBKEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDk4MhTlzMjBPTrN199hfxwFywjuqwv0d7PTjrC7Al8q0C/LIyZvVnqGmcTNKTeer9ch9ST2SmPGBni7EuvPEzAXB9z4deDRy1d8Fn8sDqC2HJ/xiwKNWjmmCxmbngUHrXBSAC8dGYrS3yZvdvKY6IUpesEnDh7duepf1Y3l7lEwSjK469zD07RhnhbAAIYbBgV5PY9F1N7AjzQbXpSRcw5FykbDMKKr0aulE4G6y0EqH9X3ToXPKWJNrg7WMyY6+HM0IXAfHp8RCm3pR2y973jH7ATuWVJWsCl311SHd2ozKLopvTpOfJJp35qQir967KKKUPAirTQD8SaAXMZFi+7 root@localhost.localdomain";
@@ -222,16 +278,46 @@ public class MainController {
     private EscapeHandler escapeHandler;
     private LateralHandler lateralHandler;
     private KubectlHandler kubectlHandler;
+    private DockerHandler dockerHandler;
+    private DockerExecHandler dockerExecHandler;
 
     // ========================================================================
     //  初始化
     // ========================================================================
     @FXML
     public void initialize() {
-        ctx = new ControllerContext(targetHost, timeoutField, tokenField, logTextArea, statusLabel, kubeconfigContent);
+        // 协议下拉框 + 目标地址自动解析（粘贴完整URL时回填协议/端口）
+        protocolOpt.getItems().addAll("https", "http");
+        protocolOpt.setValue("https");
+        targetHost.textProperty().addListener((obs, oldV, newV) -> {
+            if (newV == null) return;
+            String h = newV.trim();
+            String lower = h.toLowerCase(Locale.ROOT);
+            boolean hasScheme = lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("tcp://");
+            boolean hasPort = h.matches("(?:[^/:]+|\\[[^]]+\\]):\\d+(?:/.*)?");
+            if (hasScheme || hasPort) {
+                if (hasScheme) {
+                    protocolOpt.setValue(lower.startsWith("https://") ? "https" : "http");
+                    h = h.substring(h.indexOf("://") + 3);
+                }
+                int slash = h.indexOf('/');
+                if (slash > 0) h = h.substring(0, slash);
+                int colon = h.lastIndexOf(':');
+                if (colon > 0) {
+                    String port = h.substring(colon + 1);
+                    if (port.matches("\\d+")) { apiPort.setText(port); h = h.substring(0, colon); }
+                }
+                String finalH = h;
+                Platform.runLater(() -> {
+                    if (newV.equals(targetHost.getText())) targetHost.setText(finalH);
+                });
+            }
+        });
+
+        ctx = new ControllerContext(targetHost, protocolOpt, apiPort, timeoutField, tokenField, logTextArea, statusLabel, kubeconfigContent);
 
         // 0.信息搜集
-        infoHandler = new InfoHandler(ctx, envCheckCmds, privCheckCmds, capHexInput, capDecodeOutput, portRefArea, portScanResult, saTokenCmds);
+        infoHandler = new InfoHandler(ctx, envCheckCmds, privCheckCmds, capHexInput, capDecodeOutput, capDecodeNotice, portRefArea, portScanResult, saTokenCmds);
         infoHandler.init();
 
         // 1.初始访问
@@ -240,6 +326,7 @@ public class MainController {
         etcdVersionOpt.getItems().addAll("v2", "v3");
         etcdVersionOpt.setValue("v3");
         accessHandler = new AccessHandler(ctx, customApiPath, apiMethodOpt, kubectlCmdHint, apiServerOutput,
+                privEscNs, privEscSaName,
                 kubeletNs, kubeletPod, kubeletContainer, kubeletCmd, kubeletOutput,
                 etcdVersionOpt, etcdPort, etcdKeyInput, etcdCmdHint, etcdOutput,
                 dashboardPort, dashboardHttps, dashboardOutput,
@@ -252,14 +339,14 @@ public class MainController {
         sshPubKeyInput.setText(DEFAULT_SSH_PUBKEY);
         execHandler = new ExecHandler(ctx,
                 apiExecNs, apiExecPod, apiExecContainer, apiExecCmd, apiExecUsername, apiExecPassword,
-                apiExecOutput, apiPodTable,
+                apiExecOutput, apiPodTable, apiPodCount,
                 colNs, colName, colStatus, colNode, colIP, colContainers,
                 execNamespace, execPodName, execContainerName, execCommand, execOutput,
-                kubeletPodTable, kColNs, kColName, kColStatus, kColNode, kColIP, kColContainers,
+                kubeletPodTable, kubeletPodCount, kColNs, kColName, kColStatus, kColNode, kColIP, kColContainers,
                 backdoorImage, backdoorMountPath, backdoorNodeName,
                 backdoorLhost, backdoorLport, backdoorPodName,
                 sshPubKeyInput, backdoorYamlOutput,
-                saUtilCmds, saTokenInput, saCheckOutput,
+                saTokenInput, saCheckOutput,
                 rbacCheckCmds, rbacOutput,
                 revShellLhost, revShellLport, revShellType, revShellOutput,
                 DEFAULT_SSH_PUBKEY, DEFAULT_SSH_PRIVKEY);
@@ -298,6 +385,25 @@ public class MainController {
                 kubectlExtraArgs, kubectlCustomCmd, kubectlOutput,
                 kubeconfigContent, backdoorYamlOutput, backdoorPodName);
         kubectlHandler.init();
+
+        // 7.Docker API
+        dockerHandler = new DockerHandler(ctx,
+                dockerInfoOutput, dockerReference,
+                dockerContainerTable,
+                dockerColContainerId, dockerColContainerName, dockerColContainerImage,
+                dockerColContainerState, dockerColContainerStatus,
+                dockerContainerCount, dockerContainerOutput,
+                dockerCreateImage, dockerCreateName, dockerCreateHostDir, dockerCreateContainerDir,
+                dockerCreatePrivileged,
+                dockerImageTable, dockerColImageId, dockerColImageTag, dockerColImageSize, dockerColImageCreated,
+                dockerImageCount);
+        dockerHandler.init();
+        dockerExecHandler = new DockerExecHandler(ctx, dockerHandler,
+                dockerExecContainer, dockerShellOpt, dockerExecCmd, dockerExecOutput,
+                dockerEscapeContainer, dockerEscapeShell, dockerEscapeOs,
+                dockerEscapeMount, dockerEscapeHostRoot, dockerEscapeLhost, dockerEscapeLport,
+                dockerEscapeCheck, dockerEscapeOutput);
+        dockerExecHandler.init(DEFAULT_SSH_PUBKEY);
 
         log("[*] K8s\u7efc\u5408\u6e17\u900f\u6d4b\u8bd5\u5de5\u5177\u521d\u59cb\u5316\u5b8c\u6210");
     }
@@ -342,6 +448,7 @@ public class MainController {
     @FXML void getSecrets(ActionEvent e)           { accessHandler.getSecrets(); }
     @FXML void checkAuth(ActionEvent e)            { accessHandler.checkAuth(); }
     @FXML void sendCustomApi(ActionEvent e)        { accessHandler.sendCustomApi(); }
+    @FXML void mintAdminToken(ActionEvent e)       { accessHandler.mintAdminToken(); }
     @FXML void checkKubelet(ActionEvent e)          { accessHandler.checkKubelet(); }
     @FXML void kubeletListPods(ActionEvent e)      { accessHandler.kubeletListPods(); }
     @FXML void kubeletExecCmd(ActionEvent e)       { accessHandler.kubeletExecCmd(); }
@@ -372,6 +479,7 @@ public class MainController {
     @FXML void generateBackdoorCmd(ActionEvent e)  { execHandler.generateBackdoorCmd(); }
     @FXML void generateSshCmd(ActionEvent e)       { execHandler.generateSshCmd(); }
     @FXML void copySaUtilCmds2(ActionEvent e)      { execHandler.copySaUtilCmds2(); }
+    @FXML void showSaUtilArticle(ActionEvent e)    { execHandler.showSaUtilArticle(); }
     @FXML void checkSaPermissions(ActionEvent e)   { execHandler.checkSaPermissions(); }
     @FXML void copyRbacCmds(ActionEvent e)         { execHandler.copyRbacCmds(); }
     @FXML void checkRbacStatus(ActionEvent e)      { execHandler.checkRbacStatus(); }
@@ -442,6 +550,22 @@ public class MainController {
     @FXML void kubectlClearOutput(ActionEvent e)    { kubectlHandler.kubectlClearOutput(); }
 
     // ========================================================================
+    //  7.Docker API - 委托 DockerHandler / DockerExecHandler
+    // ========================================================================
+    @FXML void dockerConnect(ActionEvent e)           { dockerHandler.connect(); }
+    @FXML void dockerRefreshContainers(ActionEvent e) { dockerHandler.refreshContainers(); }
+    @FXML void dockerContainerStart(ActionEvent e)    { dockerHandler.containerStart(); }
+    @FXML void dockerContainerStop(ActionEvent e)     { dockerHandler.containerStop(); }
+    @FXML void dockerContainerDetail(ActionEvent e)   { dockerHandler.containerDetail(); }
+    @FXML void dockerContainerDelete(ActionEvent e)   { dockerHandler.containerDelete(); }
+    @FXML void dockerCreateContainer(ActionEvent e)   { dockerHandler.createContainer(); }
+    @FXML void dockerRefreshImages(ActionEvent e)     { dockerHandler.refreshImages(); }
+    @FXML void dockerExec(ActionEvent e)              { dockerExecHandler.execCommand(); }
+    @FXML void dockerClearExec(ActionEvent e)         { dockerExecHandler.clearExecOutput(); }
+    @FXML void dockerEscapeInspect(ActionEvent e)     { dockerExecHandler.escapeInspect(); }
+    @FXML void dockerEscapeRun(ActionEvent e)         { dockerExecHandler.escapeRun(); }
+
+    // ========================================================================
     //  日志
     // ========================================================================
     @FXML void clearLog(ActionEvent e) { logTextArea.clear(); log("[*] \u65e5\u5fd7\u5df2\u6e05\u7a7a"); }
@@ -451,23 +575,6 @@ public class MainController {
     // ========================================================================
     @FXML
     void showAbout(ActionEvent e) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("\u5173\u4e8e K8sPenTool");
-        alert.setHeaderText("K8sPenTool v1.0\n\u4f5c\u8005: T3Y");
-        alert.setContentText(
-                "\u2501\u2501\u2501\u2501\u2501 \u514d\u8d23\u58f0\u660e \u2501\u2501\u2501\u2501\u2501\n\n"
-              + "\u672c\u5de5\u5177\u4ec5\u7528\u4e8e\u5408\u6cd5\u6388\u6743\u7684\u5b89\u5168\u6d4b\u8bd5\u4e0e\u7814\u7a76\u7528\u9014\u3002\n\n"
-              + "\u4f7f\u7528\u8005\u5e94\u786e\u4fdd\u5df2\u83b7\u5f97\u76ee\u6807\u7cfb\u7edf\u6240\u6709\u8005\u7684\u660e\u786e\u4e66\u9762\u6388\u6743\uff0c\n"
-              + "\u5e76\u4e14\u5728\u6388\u6743\u8303\u56f4\u5185\u8fdb\u884c\u6d4b\u8bd5\u3002\n\n"
-              + "\u26a0 \u98ce\u9669\u8b66\u544a:\n"
-              + "\u2022 \u672c\u5de5\u5177\u53ef\u80fd\u5bf9\u76ee\u6807\u7cfb\u7edf\u9020\u6210\u4e0d\u53ef\u9006\u7684\u5f71\u54cd\n"
-              + "\u2022 \u5305\u62ec\u4f46\u4e0d\u9650\u4e8e: \u6570\u636e\u6cc4\u9732\u3001\u670d\u52a1\u4e2d\u65ad\u3001\u6743\u9650\u63d0\u5347\u3001\n"
-              + "  \u540e\u95e8\u690d\u5165\u3001\u5bb9\u5668\u9003\u9038\u7b49\n"
-              + "\u2022 \u672a\u7ecf\u6388\u6743\u4f7f\u7528\u672c\u5de5\u5177\u53ef\u80fd\u8fdd\u53cd\u6cd5\u5f8b\u6cd5\u89c4\n\n"
-              + "\u4f5c\u8005\u4e0d\u5bf9\u4efb\u4f55\u6ee5\u7528\u3001\u8bef\u7528\u6216\u975e\u6cd5\u4f7f\u7528\u672c\u5de5\u5177\u6240\u9020\u6210\u7684\n"
-              + "\u76f4\u63a5\u6216\u95f4\u63a5\u635f\u5931\u627f\u62c5\u4efb\u4f55\u8d23\u4efb\u3002\n\n"
-              + "GitHub: https://github.com/trymonoly/K8sPenTool"
-        );
-        alert.showAndWait();
+        AboutWindow.show(mainTabPane.getScene().getWindow());
     }
 }

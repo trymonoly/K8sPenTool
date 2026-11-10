@@ -1,0 +1,282 @@
+/* 全局工作台 */
+.root {
+    -fx-font-family: "Microsoft YaHei";
+    -fx-font-size: 12px;
+    -fx-text-fill: #24344b;
+    -fx-background-color: #f4f6fa;
+    -fx-accent: #2669df;
+    -fx-focus-color: #6b9ced;
+    -fx-faint-focus-color: transparent;
+}
+.label { -fx-text-fill: #34445c; }
+.workspace-header { -fx-background-color: #ffffff; }
+.brand-bar {
+    -fx-padding: 13 20 13 20;
+    -fx-background-color: #14263f;
+}
+.brand-mark {
+    -fx-background-color: #2e73e2;
+    -fx-background-radius: 9;
+    -fx-text-fill: white;
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 11 8 11;
+}
+.brand-name { -fx-font-size: 21px; -fx-font-weight: bold; -fx-text-fill: white; }
+.brand-caption { -fx-font-size: 10px; -fx-text-fill: #a7bedb; }
+.brand-version {
+    -fx-font-family: "Consolas";
+    -fx-text-fill: #bfd1eb;
+    -fx-background-color: #263c59;
+    -fx-background-radius: 4;
+    -fx-padding: 4 8 4 8;
+}
+.brand-menu { -fx-background-color: transparent; }
+.brand-menu > .container > .menu-button > .label { -fx-text-fill: #c6d4e8; }
+.brand-menu .menu-button:hover, .brand-menu .menu-button:showing { -fx-background-color: #294362; }
+.target-card { -fx-padding: 7 18 11 18; }
+.target-config { -fx-padding: 0; }
+.target-config > .title {
+    -fx-background-color: transparent;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-padding: 3 0 7 0;
+}
+.target-config > .content { -fx-background-color: white; -fx-border-width: 0; -fx-padding: 0; }
+.target-card .text-field, .target-card .combo-box-base, .target-card .button {
+    -fx-min-height: 32px;
+    -fx-pref-height: 32px;
+    -fx-max-height: 32px;
+}
+
+/* 两级导航 */
+.tab-pane { -fx-tab-min-height: 28px; }
+.tab-pane > .tab-header-area > .tab-header-background { -fx-background-color: #eaf0f7; }
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 5 5 0 0;
+    -fx-padding: 5 13 5 13;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: white; }
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label { -fx-text-fill: #2262ce; -fx-font-weight: bold; }
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label { -fx-text-fill: #63748d; }
+.tab-pane .tab-header-area .focus-indicator { -fx-border-color: transparent; }
+.main-tabs > .tab-header-area { -fx-padding: 6 18 0 18; }
+.main-tabs > .tab-header-area > .tab-header-background { -fx-background-color: #edf1f7; -fx-border-color: #dce4ee; -fx-border-width: 1 0 1 0; }
+.main-tabs > .tab-header-area > .headers-region > .tab { -fx-padding: 7 18 7 18; }
+.main-tabs > .tab-content-area { -fx-padding: 10 16 12 16; }
+.section-tabs > .tab-header-area { -fx-padding: 0 0 8 0; }
+.section-tabs > .tab-header-area > .tab-header-background { -fx-background-color: transparent; }
+.section-tabs > .tab-header-area > .headers-region > .tab { -fx-background-radius: 5; -fx-padding: 4 13 4 13; }
+.section-tabs > .tab-header-area > .headers-region > .tab:selected { -fx-background-color: #e0eaff; }
+.page-title { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #223952; -fx-padding: 0 0 4 0; }
+.page-scroll, .page-scroll > .viewport { -fx-background-color: transparent; }
+.page-scroll { -fx-padding: 0; -fx-background-insets: 0; }
+
+/* 输入与操作 */
+.button, .toggle-button {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 5;
+    -fx-border-color: #d7e0eb;
+    -fx-border-radius: 5;
+    -fx-padding: 6 12 6 12;
+    -fx-cursor: hand;
+    -fx-text-fill: #354a65;
+}
+.button:hover, .toggle-button:hover { -fx-background-color: #edf4ff; -fx-border-color: #a3bee9; }
+.button:pressed { -fx-background-color: #dbe8fc; }
+.button:default { -fx-background-color: #286cde; -fx-text-fill: white; -fx-border-color: #286cde; }
+.primary-button { -fx-background-color: #e7efff; -fx-text-fill: #225cc0; -fx-border-color: #c8d9f8; }
+.accent-button { -fx-background-color: #fff5e5; -fx-text-fill: #98651c; -fx-border-color: #efdbb7; }
+.danger-button { -fx-background-color: #fff0ed; -fx-text-fill: #a95345; -fx-border-color: #efd3cd; }
+.text-field, .password-field, .combo-box-base {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: #d7e0eb;
+    -fx-padding: 5 8 5 8;
+}
+.text-field:focused, .password-field:focused { -fx-border-color: #5a8fdf; }
+.text-input { -fx-highlight-fill: #d9e8ff; -fx-highlight-text-fill: #14263f; }
+.combo-box-base { -fx-padding: 0; }
+.combo-box-base .list-cell { -fx-padding: 6 8 6 8; }
+.command-combo > .text-field { -fx-background-color: transparent; -fx-border-width: 0; }
+.command-combo:focused, .command-combo:contains-focus { -fx-border-color: #5a8fdf; }
+.combo-box-base.command-combo:editable > .arrow-button {
+    -fx-background-color: #f0f4fa;
+    -fx-background-radius: 0 4 4 0;
+    -fx-padding: 0 11 0 11;
+}
+.combo-box-base.command-combo:editable > .arrow-button:hover { -fx-background-color: #e2ebfa; }
+.check-box > .box { -fx-background-color: white; -fx-border-color: #bccbdd; -fx-border-radius: 3; -fx-background-radius: 3; }
+.check-box:selected > .box { -fx-background-color: #286cde; -fx-border-color: #286cde; }
+.check-box:selected > .box > .mark { -fx-background-color: white; }
+.text-area {
+    -fx-background-color: #dce4ee;
+    -fx-background-radius: 6;
+    -fx-padding: 1;
+}
+.text-area .content { -fx-background-color: #fbfcff; -fx-padding: 11; -fx-background-radius: 5; }
+.code-area { -fx-font-family: "Consolas"; -fx-font-size: 12px; }
+.command-drawer > .title { -fx-background-color: #eaf0f8; -fx-background-radius: 5; -fx-padding: 6 10 6 10; }
+.command-drawer > .content { -fx-border-color: #dce4ee; -fx-background-color: white; }
+
+/* 资源结果与详情 */
+.result-pane { -fx-background-color: white; -fx-border-color: #d9e2ef; -fx-border-radius: 7; -fx-background-radius: 7; }
+.result-heading-bar { -fx-padding: 10 12 10 12; -fx-border-color: #e7edf5; -fx-border-width: 0 0 1 0; }
+.result-heading { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #253a56; }
+.result-type { -fx-font-family: "Consolas"; -fx-font-size: 11px; -fx-text-fill: #6c7c93; }
+.result-switch { -fx-background-color: #f0f3f8; -fx-padding: 3; -fx-background-radius: 6; }
+.result-switch .toggle-button { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 4 10 4 10; -fx-text-fill: #728199; }
+.result-switch .toggle-button:selected { -fx-background-color: white; -fx-text-fill: #235dc3; -fx-border-color: #d9e3f1; }
+.result-heading-bar > .button { -fx-padding: 5 10 5 10; }
+.result-toolbar { -fx-padding: 9 12 9 12; -fx-background-color: #fbfcfe; }
+.result-count { -fx-text-fill: #7d8ba0; -fx-font-size: 11px; }
+.http-badge { -fx-background-radius: 4; -fx-padding: 3 7 3 7; -fx-font-family: "Consolas"; -fx-font-size: 11px; }
+.http-ok { -fx-background-color: #e6f5ed; -fx-text-fill: #26704c; }
+.http-error { -fx-background-color: #ffebea; -fx-text-fill: #ab433d; }
+.status-badge { -fx-background-radius: 4; -fx-padding: 2 7 2 7; -fx-font-size: 10px; }
+.status-ok { -fx-background-color: #e8f5ed; -fx-text-fill: #327752; }
+.status-pending { -fx-background-color: #fff4dd; -fx-text-fill: #9c731f; }
+.status-error { -fx-background-color: #ffebea; -fx-text-fill: #ac4d45; }
+.status-neutral { -fx-background-color: #eaf0f8; -fx-text-fill: #627994; }
+.result-footer { -fx-padding: 7 12 7 12; -fx-text-fill: #8795a9; -fx-font-size: 10px; -fx-border-color: #e9eef5; -fx-border-width: 1 0 0 0; }
+.result-empty { -fx-background-color: #fcfdff; -fx-padding: 20; }
+.result-empty .label { -fx-text-fill: #94a1b3; }
+.result-empty .empty-title { -fx-font-size: 17px; -fx-text-fill: #5d718e; }
+.result-pane .text-area { -fx-background-radius: 0; -fx-background-color: white; -fx-padding: 0; }
+.result-pane .text-area .content { -fx-background-color: white; }
+.table-view, .tree-table-view { -fx-background-color: white; -fx-border-color: #e1e8f1; -fx-border-width: 1; -fx-padding: 0; }
+.result-pane .table-view { -fx-border-width: 0; }
+.table-view .column-header-background, .tree-table-view .column-header-background { -fx-background-color: #f0f4fa; }
+.table-view .column-header, .tree-table-view .column-header, .table-view .filler, .tree-table-view .filler {
+    -fx-background-color: #f0f4fa;
+    -fx-border-color: #e2e9f2;
+    -fx-border-width: 0 1 1 0;
+    -fx-size: 34px;
+}
+.table-view .column-header .label, .tree-table-view .column-header .label {
+    -fx-text-fill: #5c708d; -fx-font-weight: bold; -fx-font-size: 11px; -fx-alignment: CENTER_LEFT; -fx-padding: 0 10 0 10;
+}
+.table-row-cell, .tree-table-row-cell { -fx-background-color: white; -fx-cell-size: 35px; }
+.table-row-cell:odd, .tree-table-row-cell:odd { -fx-background-color: #fafcff; }
+.table-cell, .tree-table-cell { -fx-border-color: transparent; -fx-text-fill: #3b4e68; -fx-padding: 9 10 7 10; }
+.table-row-cell:filled:hover, .tree-table-row-cell:filled:hover { -fx-background-color: #f0f5fd; }
+.table-row-cell:filled:selected, .tree-table-row-cell:filled:selected { -fx-background-color: #dfebff; }
+.table-row-cell:filled:selected .table-cell, .tree-table-row-cell:filled:selected .tree-table-cell { -fx-text-fill: #194eaa; }
+.context-menu { -fx-background-color: white; -fx-background-radius: 6; -fx-padding: 5; -fx-border-color: #d6e0ed; -fx-border-radius: 6; }
+.menu-item { -fx-padding: 7 15 7 12; }
+.menu-item:focused { -fx-background-color: #e8f0ff; }
+.menu-item:focused .label { -fx-text-fill: #225ac0; }
+.resource-dialog { -fx-background-color: #f5f7fb; }
+.directory-navigation { -fx-padding: 8 12 8 12; -fx-background-color: #f6f9ff; -fx-border-color: #e7edf5; -fx-border-width: 0 0 1 0; }
+.directory-path { -fx-font-family: "Consolas"; -fx-text-fill: #355b8d; }
+.etcd-kind { -fx-padding: 2 8 2 8; -fx-background-radius: 4; -fx-font-size: 11px; }
+.etcd-directory { -fx-background-color: #fff1d7; -fx-text-fill: #90641e; }
+.etcd-key { -fx-background-color: #e7efff; -fx-text-fill: #2b61b4; }
+.resource-dialog .header-panel { -fx-background-color: white; -fx-padding: 16 20 16 20; }
+.resource-dialog .header-panel .label { -fx-font-size: 16px; -fx-font-weight: bold; }
+.field-browser { -fx-background-color: transparent; -fx-padding: 0; }
+.field-browser > .split-pane-divider { -fx-background-color: #e6edf6; -fx-padding: 3 0 3 0; }
+.field-content-pane { -fx-background-color: white; -fx-border-color: #dce5f0; }
+.field-content-toolbar { -fx-padding: 8 10 8 10; -fx-spacing: 8; }
+.field-heading { -fx-font-weight: bold; }
+.field-path { -fx-text-fill: #627b9b; }
+.field-content-pane .text-area { -fx-background-color: transparent; -fx-background-radius: 0; }
+.field-content-pane .text-area .content { -fx-background-color: white; -fx-background-radius: 0; }
+.field-content-toolbar .toggle-button:selected { -fx-background-color: #e7efff; -fx-border-color: #c8d9f8; -fx-text-fill: #225cc0; }
+.status-bar { -fx-background-color: #eaf0f7; -fx-border-color: #dbe3ee; -fx-border-width: 1 0 0 0; }
+.status-bar .label { -fx-font-size: 10px; -fx-text-fill: #6c7e96; }
+.status-bar .status-dot { -fx-text-fill: #468a72; }
+
+/* 小屏幕或缩小窗口时收紧间距，为查询结果保留空间。 */
+.workbench:compact .brand-bar { -fx-padding: 8 14 8 14; }
+.workbench:compact .brand-name { -fx-font-size: 18px; }
+.workbench:compact .brand-mark { -fx-font-size: 16px; -fx-padding: 6 9 6 9; }
+.workbench:compact .target-card { -fx-padding: 4 12 7 12; }
+.workbench:compact .target-config > .title { -fx-padding: 2 0 4 0; }
+.workbench:compact .main-tabs > .tab-header-area { -fx-padding: 3 10 0 10; }
+.workbench:compact .main-tabs > .tab-header-area > .headers-region > .tab { -fx-padding: 4 12 4 12; }
+.workbench:compact .main-tabs > .tab-content-area { -fx-padding: 6 10 6 10; }
+.workbench:compact .section-tabs > .tab-header-area { -fx-padding: 0 0 4 0; }
+.workbench:compact .section-tabs > .tab-header-area > .headers-region > .tab { -fx-padding: 3 10 3 10; }
+.workbench:compact .button, .workbench:compact .toggle-button { -fx-padding: 4 9 4 9; }
+.workbench:compact .text-field, .workbench:compact .password-field { -fx-padding: 4 7 4 7; }
+.workbench:compact .page-title { -fx-font-size: 14px; -fx-padding: 0 0 2 0; }
+.workbench:compact .result-heading-bar { -fx-padding: 7 9 7 9; }
+.workbench:compact .result-toolbar { -fx-padding: 6 9 6 9; }
+.workbench:compact .result-footer { -fx-padding: 5 9 5 9; }
+.workbench:compact .result-switch .toggle-button { -fx-padding: 3 8 3 8; }
+.workbench:compact .table-view { -fx-fixed-cell-size: 30px; }
+.workbench:compact .table-row-cell { -fx-cell-size: 30px; }
+.workbench:compact .table-cell { -fx-padding: 6 8 5 8; }
+
+/* 文章阅读窗口 */
+.article-header { -fx-padding: 20 24 20 24; -fx-background-color: white; -fx-border-color: #e0e7f0; -fx-border-width: 0 0 1 0; }
+.article-title { -fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #203953; }
+.article-scroll, .article-scroll > .viewport { -fx-background-color: #f4f6fa; }
+.article-scroll { -fx-background-insets: 0; -fx-padding: 0; }
+.article-body { -fx-padding: 24; }
+.article-section-title { -fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #2a4566; }
+.article-code { -fx-font-family: "Consolas"; -fx-font-size: 13px; }
+.article-code .content { -fx-background-color: #ffffff; -fx-padding: 14; }
+
+/* 关于窗口 */
+.about-header { -fx-padding: 22 24 22 24; -fx-background-color: #14263f; }
+.about-title { -fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white; }
+.about-caption { -fx-font-size: 11px; -fx-text-fill: #afc3df; }
+.about-version {
+    -fx-font-family: "Consolas"; -fx-font-size: 12px; -fx-text-fill: #c8dbf5;
+    -fx-background-color: #293f5e; -fx-background-radius: 5; -fx-padding: 5 9 5 9;
+}
+.about-scroll, .about-scroll > .viewport { -fx-background-color: #f3f6fb; }
+.about-scroll { -fx-background-insets: 0; -fx-padding: 0; }
+.about-content { -fx-padding: 18; }
+.about-card {
+    -fx-background-color: white; -fx-background-radius: 8;
+    -fx-border-color: #e0e7f1; -fx-border-radius: 8; -fx-padding: 18;
+}
+.about-section-title { -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #263e5a; }
+.about-author { -fx-font-weight: bold; -fx-text-fill: #2a4668; }
+.about-project-link { -fx-font-family: "Consolas"; -fx-font-size: 11px; -fx-text-fill: #386bc1; }
+.about-paragraph { -fx-font-size: 12px; -fx-line-spacing: 4px; -fx-text-fill: #4c5f77; }
+.about-warning {
+    -fx-background-color: #fff8e9; -fx-background-radius: 6;
+    -fx-border-color: #efdfbc; -fx-border-radius: 6; -fx-padding: 12;
+}
+.about-warning-title { -fx-font-weight: bold; -fx-text-fill: #91672b; }
+.about-warning .about-paragraph { -fx-text-fill: #806139; }
+.about-footer { -fx-padding: 12 20 12 20; -fx-background-color: white; -fx-border-color: #e0e7f1; -fx-border-width: 1 0 0 0; }
+
+/* 命令参考卡片 */
+.command-card {
+    -fx-background-color: white; -fx-background-radius: 8;
+    -fx-border-color: #dfe7f2; -fx-border-radius: 8; -fx-padding: 16;
+}
+.command-number {
+    -fx-font-family: "Consolas"; -fx-font-size: 12px; -fx-font-weight: bold;
+    -fx-text-fill: #2c65c8; -fx-background-color: #eaf1ff; -fx-background-radius: 5;
+    -fx-padding: 5 7 5 7; -fx-min-width: 30px; -fx-alignment: CENTER;
+}
+.command-card-title { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2a405e; }
+.command-description { -fx-font-size: 12px; -fx-text-fill: #75859c; -fx-line-spacing: 3px; }
+.command-copy { -fx-font-size: 11px; -fx-padding: 4 9 4 9; }
+.command-code-box, .command-code-box > .viewport {
+    -fx-background-color: #172a42; -fx-background-radius: 6; -fx-background-insets: 0;
+}
+.command-code-box { -fx-padding: 0; }
+.command-code-text {
+    -fx-font-family: "Consolas"; -fx-font-size: 13px; -fx-text-fill: #deebfa; -fx-padding: 12;
+}
+.command-code-box .scroll-bar:horizontal {
+    -fx-background-color: #172a42; -fx-min-height: 14px; -fx-pref-height: 14px; -fx-max-height: 14px;
+}
+.command-code-box .scroll-bar:horizontal .thumb { -fx-background-color: #627892; -fx-background-radius: 4; }
+.command-code-box .scroll-bar:horizontal .increment-button,
+.command-code-box .scroll-bar:horizontal .decrement-button { -fx-background-color: #172a42; }
+.command-code-box .scroll-bar:horizontal .increment-arrow,
+.command-code-box .scroll-bar:horizontal .decrement-arrow { -fx-background-color: #a8bbd4; }
+.reference-warning {
+    -fx-background-color: #fff5e3; -fx-background-radius: 6; -fx-padding: 10 12 10 12;
+    -fx-text-fill: #946b2d; -fx-font-size: 12px;
+}

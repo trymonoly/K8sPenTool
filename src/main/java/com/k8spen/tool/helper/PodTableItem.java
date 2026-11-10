@@ -1,5 +1,6 @@
 package com.k8spen.tool.helper;
 
+import com.google.gson.JsonObject;
 import javafx.beans.property.SimpleStringProperty;
 
 /**
@@ -13,6 +14,7 @@ public class PodTableItem {
     private final SimpleStringProperty podIP;
     private final SimpleStringProperty containers;
     private final SimpleStringProperty images;
+    private JsonObject resource;
 
     public PodTableItem(String namespace, String name, String status, String node,
                         String podIP, String containers, String images) {
@@ -32,6 +34,9 @@ public class PodTableItem {
     public String getPodIP() { return podIP.get(); }
     public String getContainers() { return containers.get(); }
     public String getImages() { return images.get(); }
+
+    public JsonObject getResource() { return resource; }
+    void setResource(JsonObject resource) { this.resource = resource; }
 
     public SimpleStringProperty namespaceProperty() { return namespace; }
     public SimpleStringProperty nameProperty() { return name; }

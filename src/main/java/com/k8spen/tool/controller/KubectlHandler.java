@@ -1,5 +1,6 @@
 package com.k8spen.tool.controller;
 
+import com.k8spen.tool.view.ResultPane;
 import com.k8spen.tool.utils.KubectlUtil;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -20,7 +21,7 @@ public class KubectlHandler {
     private final PasswordField kubectlPassword;
     private final TextField kubectlExtraArgs;
     private final TextField kubectlCustomCmd;
-    private final TextArea kubectlOutput;
+    private final ResultPane kubectlOutput;
 
     // 需要从其他handler读取的共享控件
     private final TextArea kubeconfigContent;
@@ -31,7 +32,7 @@ public class KubectlHandler {
                           ComboBox<String> kubectlConnMode,
                           TextField kubectlUsername, PasswordField kubectlPassword,
                           TextField kubectlExtraArgs, TextField kubectlCustomCmd,
-                          TextArea kubectlOutput,
+                          ResultPane kubectlOutput,
                           TextArea kubeconfigContent,
                           TextArea backdoorYamlOutput, TextField backdoorPodName) {
         this.ctx = ctx;
@@ -93,7 +94,7 @@ public class KubectlHandler {
                     String useToken = (token != null && !token.isEmpty()) ? token : null;
                     String useUser = !username.isEmpty() ? username : null;
                     String usePass = !password.isEmpty() ? password : null;
-                    return KubectlUtil.exec("https://" + host + ":6443", useToken, useUser, usePass, true, ctx.getTimeout(), "apply", "-f", yamlPath);
+                    return KubectlUtil.exec(ctx.getApiBaseUrl(), useToken, useUser, usePass, true, ctx.getTimeout(), "apply", "-f", yamlPath);
                 }
             }
         };
@@ -145,9 +146,9 @@ public class KubectlHandler {
         if (mode.contains("Kubeconfig")) {
             preLog.append(" --kubeconfig=<kubeconfig>");
         } else if (mode.contains("直接")) {
-            if (host != null) preLog.append(" --server=https://").append(host).append(":6443 --insecure-skip-tls-verify=true");
+            if (host != null) preLog.append(" --server=").append(ctx.getApiBaseUrl()).append(" --insecure-skip-tls-verify=true");
         } else {
-            if (host != null) preLog.append(" --server=https://").append(host).append(":6443 --insecure-skip-tls-verify=true");
+            if (host != null) preLog.append(" --server=").append(ctx.getApiBaseUrl()).append(" --insecure-skip-tls-verify=true");
             if (token != null && !token.isEmpty()) preLog.append(" --token=").append(token.length() > 20 ? token.substring(0, 20) + "..." : token);
         }
         for (String a : finalArgs) preLog.append(" ").append(a);
@@ -166,7 +167,7 @@ public class KubectlHandler {
                 } else if (mode.contains("直接")) {
                     if (host != null && !host.isEmpty()) {
                         List<String> rawArgs = new ArrayList<>();
-                        rawArgs.add("--server=https://" + host + ":6443");
+                        rawArgs.add("--server=" + ctx.getApiBaseUrl());
                         rawArgs.add("--insecure-skip-tls-verify=true");
                         if (!username.isEmpty()) { rawArgs.add("--username=" + username); rawArgs.add("--password=" + password); }
                         for (String a : finalArgs) rawArgs.add(a);
@@ -178,12 +179,12 @@ public class KubectlHandler {
                     String useToken = (token != null && !token.isEmpty()) ? token : null;
                     String useUser = !username.isEmpty() ? username : null;
                     String usePass = !password.isEmpty() ? password : null;
-                    return KubectlUtil.exec("https://" + host + ":6443", useToken, useUser, usePass, true, ctx.getTimeout(), finalArgs);
+                    return KubectlUtil.exec(ctx.getApiBaseUrl(), useToken, useUser, usePass, true, ctx.getTimeout(), finalArgs);
                 }
             }
         };
         task.setOnSucceeded(e -> {
-            kubectlOutput.setText(task.getValue());
+            kubectlOutput.showKubectl(task.getValue(), args[0].equals("get") || args[0].equals("auth"));
             ctx.log("[*] 执行: " + KubectlUtil.lastCommand);
             if (task.getValue().startsWith("[Exit code:")) { ctx.setStatus("kubectl执行失败"); ctx.log("[-] kubectl执行失败"); }
             else { ctx.setStatus("kubectl执行完成"); ctx.log("[+] kubectl执行成功"); }

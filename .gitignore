@@ -1,5 +1,6 @@
 # Build output
 target/
+backups/
 
 # IDE
 .idea/

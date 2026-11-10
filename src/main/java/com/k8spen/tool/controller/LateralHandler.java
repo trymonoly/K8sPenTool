@@ -1,5 +1,7 @@
 package com.k8spen.tool.controller;
 
+import com.k8spen.tool.view.ResultPane;
+import com.k8spen.tool.view.TableRowActions;
 import com.google.gson.*;
 import com.k8spen.tool.helper.PodJsonParser;
 import com.k8spen.tool.helper.SecretTableItem;
@@ -26,12 +28,12 @@ public class LateralHandler {
     private final TextArea credOutput;
 
     // 内网探测
-    private final TextArea lateralOutput;
+    private final ResultPane lateralOutput;
 
     // 污点横向
     private final TextField lateralTaintNode, lateralTaintImage;
     private final CheckBox lateralTaintHostMount;
-    private final TextArea lateralTaintOutput;
+    private final ResultPane lateralTaintOutput;
 
     public LateralHandler(ControllerContext ctx,
                           TextField credNs, ComboBox<String> credTypeFilter,
@@ -41,9 +43,9 @@ public class LateralHandler {
                           TableColumn<SecretTableItem, String> credColType,
                           TableColumn<SecretTableItem, String> credColAge,
                           TextArea credOutput,
-                          TextArea lateralOutput,
+                          ResultPane lateralOutput,
                           TextField lateralTaintNode, TextField lateralTaintImage,
-                          CheckBox lateralTaintHostMount, TextArea lateralTaintOutput) {
+                          CheckBox lateralTaintHostMount, ResultPane lateralTaintOutput) {
         this.ctx = ctx;
         this.credNs = credNs; this.credTypeFilter = credTypeFilter;
         this.credSecretTable = credSecretTable;
@@ -73,6 +75,13 @@ public class LateralHandler {
         credSecretTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) credNs.setText(newVal.getNamespace());
         });
+        credSecretTable.setPlaceholder(new Label("列出 Secret 后，右键或双击记录查看详情"));
+        credSecretTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        TableRowActions.install(credSecretTable, "查看详情（自动解码）", selected -> credViewSecret(),
+                selected -> List.of(
+                        new TableRowActions.Action<>("复制 Secret 名称", item -> ctx.copyToClipboard(item.getName())),
+                        new TableRowActions.Action<>("复制命名空间", item -> ctx.copyToClipboard(item.getNamespace())),
+                        new TableRowActions.Action<>("复制类型", item -> ctx.copyToClipboard(item.getType()))));
     }
 
     // ================ 凭证窃取 ================
@@ -172,7 +181,7 @@ public class LateralHandler {
         if (hostMount) {
             yaml.append("    volumeMounts:\n    - name: host-root\n      mountPath: /host\n  volumes:\n  - name: host-root\n    hostPath:\n      path: /\n");
         }
-        lateralTaintOutput.setText(yaml.toString());
+        lateralTaintOutput.setEditableText(yaml.toString());
         ctx.log("[+] 已生成污点容忍 Pod YAML");
     }
 
@@ -180,7 +189,7 @@ public class LateralHandler {
 
     // ================ 工具方法 ================
 
-    private void lateralApiGet(String path, TextArea output, String label) {
+    private void lateralApiGet(String path, ResultPane output, String label) {
         String url = ctx.buildApiServerUrl(path);
         if (url == null) { output.setText("[-] 请填写目标地址"); return; }
         ctx.log("[*] GET " + path);
@@ -192,7 +201,7 @@ public class LateralHandler {
         };
         task.setOnSucceeded(e -> {
             String raw = PodJsonParser.stripHttpPrefix(task.getValue());
-            output.setText(formatApiListForDisplay(raw, label));
+            output.showResponse(task.getValue(), formatApiListForDisplay(raw, label));
             ctx.setStatus(label + "已加载");
             ctx.log("[+] " + label + "获取成功");
         });
